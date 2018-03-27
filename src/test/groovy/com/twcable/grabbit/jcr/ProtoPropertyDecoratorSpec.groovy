@@ -1,5 +1,3 @@
-package com.twcable.grabbit.jcr
-
 /*
  * Copyright 2015 Time Warner Cable, Inc.
  *
@@ -15,20 +13,28 @@ package com.twcable.grabbit.jcr
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.twcable.grabbit.jcr
 
 import com.day.cq.commons.jcr.JcrConstants
 import com.google.protobuf.ByteString
-import com.twcable.grabbit.proto.NodeProtos.Property as PropertyProto
+import com.twcable.grabbit.proto.NodeProtos.Property as ProtoProperty
 import com.twcable.grabbit.proto.NodeProtos.Value as ProtoValue
+import javax.jcr.Node
+import javax.jcr.Property
+import javax.jcr.PropertyType
+import javax.jcr.Session
+import javax.jcr.Value
+import javax.jcr.ValueFormatException
 import org.apache.jackrabbit.value.BinaryValue
 import org.apache.jackrabbit.value.DateValue
 import org.apache.jackrabbit.value.StringValue
 import spock.lang.Specification
 
-import javax.jcr.*
 
 import static org.apache.jackrabbit.JcrConstants.JCR_MIXINTYPES
 import static org.apache.jackrabbit.JcrConstants.JCR_PRIMARYTYPE
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.NT_REP_ACL
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.NT_REP_GRANT_ACE
 
 class ProtoPropertyDecoratorSpec extends Specification {
 
@@ -37,9 +43,10 @@ class ProtoPropertyDecoratorSpec extends Specification {
         final mockNode = Mock(Node)
 
         when:
-        PropertyProto someProperty = PropertyProto.newBuilder()
+        ProtoProperty someProperty = ProtoProperty.newBuilder()
                                         .setName(refusedType)
                                         .setType(PropertyType.STRING)
+                                        .setMultiple(false)
                                         .addValues(
                                             ProtoValue.newBuilder()
                                                 .setStringValue("somevalue")
@@ -63,9 +70,10 @@ class ProtoPropertyDecoratorSpec extends Specification {
         final mockNode = Mock(Node)
 
         when:
-        PropertyProto someProperty = PropertyProto.newBuilder()
+        ProtoProperty someProperty = ProtoProperty.newBuilder()
                                             .setName("property")
                                             .setType(PropertyType.STRING)
+                                            .setMultiple(false)
                                             .addValues(
                                                 ProtoValue.newBuilder()
                                                     .setStringValue("somevalue")
@@ -86,9 +94,10 @@ class ProtoPropertyDecoratorSpec extends Specification {
         final mockNode = Mock(Node)
 
         when:
-        PropertyProto someMultiProperty = PropertyProto.newBuilder()
+        ProtoProperty someMultiProperty = ProtoProperty.newBuilder()
                                               .setName("property")
                                               .setType(PropertyType.STRING)
+                                              .setMultiple(true)
                                               .addAllValues(
                                                   [
                                                       ProtoValue.newBuilder().setStringValue("value1").build(),
@@ -109,8 +118,9 @@ class ProtoPropertyDecoratorSpec extends Specification {
         final mockNode = Mock(Node)
 
         when:
-        PropertyProto someMultiProperty = PropertyProto.newBuilder()
+        ProtoProperty someMultiProperty = ProtoProperty.newBuilder()
                                             .setName("property")
+                                            .setMultiple(true)
                                             .setType(PropertyType.STRING).build()
 
         final propertyDecorator = new ProtoPropertyDecorator(someMultiProperty)
@@ -142,9 +152,10 @@ class ProtoPropertyDecoratorSpec extends Specification {
             }
         }
 
-        PropertyProto someProperty = PropertyProto.newBuilder()
+        ProtoProperty someProperty = ProtoProperty.newBuilder()
                                         .setName("property")
                                         .setType(PropertyType.STRING)
+                                        .setMultiple(false)
                                         .addValues(
                                             ProtoValue.newBuilder()
                                                 .setStringValue("somevalue")
@@ -181,9 +192,10 @@ class ProtoPropertyDecoratorSpec extends Specification {
             }
         }
 
-        PropertyProto someMultiProperty = PropertyProto.newBuilder()
+        ProtoProperty someMultiProperty = ProtoProperty.newBuilder()
                                                 .setName("property")
                                                 .setType(PropertyType.STRING)
+                                                .setMultiple(true)
                                                 .addAllValues(
                                                     [
                                                         ProtoValue.newBuilder().setStringValue("value1").build(),
@@ -207,9 +219,10 @@ class ProtoPropertyDecoratorSpec extends Specification {
 
 
         when:
-        PropertyProto someProperty = PropertyProto.newBuilder()
+        ProtoProperty someProperty = ProtoProperty.newBuilder()
                                         .setName(JcrConstants.JCR_DATA)
                                         .setType(PropertyType.BINARY)
+                                        .setMultiple(false)
                                         .addValues(
                                             ProtoValue.newBuilder()
                                                 .setBytesValue(ByteString.copyFrom("somebytes".bytes))
@@ -232,9 +245,10 @@ class ProtoPropertyDecoratorSpec extends Specification {
 
 
         when:
-        PropertyProto someProperty = PropertyProto.newBuilder()
+        ProtoProperty someProperty = ProtoProperty.newBuilder()
                                         .setName("somedate")
                                         .setType(PropertyType.DATE)
+                                        .setMultiple(false)
                                         .addValues(
                                             ProtoValue.newBuilder()
                                                 .setStringValue("2015-07-06")
@@ -248,5 +262,108 @@ class ProtoPropertyDecoratorSpec extends Specification {
 
         then:
         1 * mockNode.setProperty("somedate", _ as DateValue, PropertyType.DATE)
+    }
+
+    def "isUserType()"() {
+        when:
+        ProtoProperty property = ProtoProperty.newBuilder()
+                                    .setName(name)
+                                    .setType(PropertyType.NAME)
+                                    .setMultiple(false)
+                                    .addValues(
+                                        ProtoValue.newBuilder()
+                                            .setStringValue(value)
+                                            .build()
+                                    )
+                                    .build()
+
+
+        final ProtoPropertyDecorator propertyDecorator = new ProtoPropertyDecorator(property)
+
+        then:
+        propertyDecorator.isUserType() == expectedValue
+
+        where:
+        name             |   value       |  expectedValue
+        JCR_PRIMARYTYPE  |   'rep:User'  |  true
+        JCR_PRIMARYTYPE  |   'rep:Group' |  false
+        'propertyname'   |   'rep:User'  |  false
+    }
+
+    def "isGroupType()"() {
+        when:
+        ProtoProperty property = ProtoProperty.newBuilder()
+                                    .setName(name)
+                                    .setType(PropertyType.NAME)
+                                    .setMultiple(false)
+                                    .addValues(
+                                        ProtoValue.newBuilder()
+                                            .setStringValue(value)
+                                            .build()
+                                    )
+                                    .build()
+
+
+        final ProtoPropertyDecorator propertyDecorator = new ProtoPropertyDecorator(property)
+
+        then:
+        propertyDecorator.isGroupType() == expectedValue
+
+        where:
+        name             |   value       |  expectedValue
+        JCR_PRIMARYTYPE  |   'rep:User'  |  false
+        JCR_PRIMARYTYPE  |   'rep:Group' |  true
+        'propertyname'   |   'rep:Group' |  false
+    }
+
+    def "isAuthorizableIDType()"() {
+        when:
+        ProtoProperty property = ProtoProperty.newBuilder()
+                .setName(name)
+                .setType(PropertyType.NAME)
+                .setMultiple(false)
+                .addValues(
+                ProtoValue.newBuilder()
+                        .setStringValue('somevalue')
+                        .build()
+        )
+                .build()
+
+
+        final ProtoPropertyDecorator propertyDecorator = new ProtoPropertyDecorator(property)
+
+        then:
+        propertyDecorator.isAuthorizableIDType() == expectedValue
+
+        where:
+        name                 |   expectedValue
+        'rep:authorizableId' |   true
+        'propertyname'       |   false
+    }
+
+    def "isACType()"() {
+        when:
+        ProtoProperty property = ProtoProperty.newBuilder()
+                                    .setName(name)
+                                    .setType(PropertyType.NAME)
+                                    .setMultiple(false)
+                                    .addValues(
+                                        ProtoValue.newBuilder()
+                                                .setStringValue(value)
+                                                .build()
+                                    )
+                                    .build()
+
+
+        final ProtoPropertyDecorator propertyDecorator = new ProtoPropertyDecorator(property)
+
+        then:
+        propertyDecorator.isACType() == expectedValue
+
+        where:
+        name             |   value             |  expectedValue
+        JCR_PRIMARYTYPE  |   NT_REP_ACL        |  true
+        JCR_PRIMARYTYPE  |   NT_REP_GRANT_ACE  |  true
+        'propertyname'   |   NT_REP_ACL        |  false
     }
 }

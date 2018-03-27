@@ -1,3 +1,18 @@
+/*
+ * Copyright 2015 Time Warner Cable, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.twcable.grabbit.client
 
 import com.twcable.grabbit.ClientJobStatus
@@ -17,28 +32,11 @@ import spock.lang.Specification
 import spock.lang.Subject
 import spock.lang.Unroll
 
-import javax.annotation.Nonnull
-import javax.servlet.ServletInputStream
 
 import static com.twcable.grabbit.client.servlets.GrabbitJobServlet.ALL_JOBS_ID
+import static com.twcable.grabbit.testutil.StubInputStream.inputStream
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST
 import static javax.servlet.http.HttpServletResponse.SC_OK
-
-/*
- * Copyright 2015 Time Warner Cable, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 @Subject(GrabbitJobServlet)
 class GrabbitJobServletSpec extends Specification {
@@ -187,7 +185,7 @@ class GrabbitJobServletSpec extends Specification {
     def "Can create a new job successfully from configuration"() {
         given:
         File configFile = new File(this.class.getResource("test_config.yaml").getFile())
-        final inputStream = new StubServletInputStream(configFile)
+        final inputStream = inputStream(configFile)
         final clientService = Mock(ClientService) {
             initiateGrab(_, _) >> [123L]
         }
@@ -231,36 +229,7 @@ class GrabbitJobServletSpec extends Specification {
         1 * response.setStatus(SC_BAD_REQUEST)
 
         where:
-        inputStream << [new StubServletInputStream(" "), new StubServletInputStream("foo: 'foo'")]
+        inputStream << [inputStream(" "), inputStream("foo: 'foo'")]
         //One causes SnakeYAML to produce a null config map, and the other does not pass our validations (missing values)
     }
-
-    class StubServletInputStream extends ServletInputStream {
-
-
-        private final int byte_length
-        private final byte[] bytes
-        private int byte_index = 0
-
-        StubServletInputStream(@Nonnull final String data) {
-            bytes = data as byte[]
-            byte_length = bytes.length
-        }
-
-        StubServletInputStream(@Nonnull final File fromFile) {
-            bytes = fromFile.readBytes()
-            byte_length = bytes.length
-        }
-
-        @Override
-        int read() throws IOException {
-            if (byte_index <= byte_length - 1) {
-                final thisByte = bytes[byte_index] as int
-                byte_index++
-                return thisByte
-            }
-            return -1
-        }
-    }
-
 }

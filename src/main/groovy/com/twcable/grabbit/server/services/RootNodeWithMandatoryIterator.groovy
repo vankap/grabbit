@@ -77,7 +77,7 @@ final class RootNodeWithMandatoryIterator implements Iterator<JcrNode> {
 
 
     private static Collection<JCRNodeDecorator> getNonMandatoryChildren(final JCRNodeDecorator node) {
-        node.getImmediateChildNodes().findAll { !it.isRequiredNode() }
+        node.getImmediateChildNodes().findAll { !it.isMandatoryNode() }
     }
 
 

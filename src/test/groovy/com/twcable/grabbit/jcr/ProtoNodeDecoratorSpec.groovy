@@ -1,8 +1,3 @@
-package com.twcable.grabbit.jcr
-
-import com.day.cq.commons.jcr.JcrConstants
-import com.twcable.grabbit.proto.NodeProtos.Node as ProtoNode
-
 /*
  * Copyright 2015 Time Warner Cable, Inc.
  *
@@ -18,125 +13,103 @@ import com.twcable.grabbit.proto.NodeProtos.Node as ProtoNode
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.twcable.grabbit.jcr
+
+import com.twcable.grabbit.proto.NodeProtos
+import com.twcable.grabbit.proto.NodeProtos.Node as ProtoNode
 import com.twcable.grabbit.proto.NodeProtos.Node.Builder as ProtoNodeBuilder
-import com.twcable.grabbit.proto.NodeProtos.Property as ProtoProperty
-import com.twcable.grabbit.proto.NodeProtos.Value as ProtoValue
 import spock.lang.Specification
 
-import javax.jcr.Node
-import javax.jcr.Session
 
 import static javax.jcr.PropertyType.STRING
-import static org.apache.jackrabbit.JcrConstants.JCR_MIXINTYPES
 import static org.apache.jackrabbit.JcrConstants.JCR_PRIMARYTYPE
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.NT_REP_ACL
+
 
 @SuppressWarnings("GroovyAccessibility")
 class ProtoNodeDecoratorSpec extends Specification {
 
-    ProtoNode decoratedProtoNode
-
-
-    def setup() {
-        ProtoNodeBuilder nodeBuilder = ProtoNode.newBuilder()
-        nodeBuilder.setName("somenode")
-
-        ProtoProperty primaryTypeProperty = ProtoProperty
-                .newBuilder()
-                .setName(JCR_PRIMARYTYPE)
-                .setType(STRING)
-                .addValues(ProtoValue.newBuilder().setStringValue(JcrConstants.NT_UNSTRUCTURED))
-                .build()
-        nodeBuilder.addProperties(primaryTypeProperty)
-
-        ProtoProperty mixinTypeProperty = ProtoProperty
-                .newBuilder()
-                .setName(JCR_MIXINTYPES)
-                .setType(STRING)
-                .addAllValues(
-                    [
-                        ProtoValue.newBuilder().setStringValue("somemixintype").build(),
-                        ProtoValue.newBuilder().setStringValue("unwritablemixin").build()
-                    ]
-                )
-                .build()
-        nodeBuilder.addProperties(mixinTypeProperty)
-
-
-        ProtoProperty someOtherProperty = ProtoProperty
-                .newBuilder()
-                .setName("someproperty")
-                .setType(STRING)
-                .addValues(ProtoValue.newBuilder().setStringValue("somevalue"))
-                .build()
-        nodeBuilder.addProperties(someOtherProperty)
-
-        decoratedProtoNode = nodeBuilder.build()
-    }
-
-
     def "ProtoNodeDecorator can not be constructed with a null ProtoNode"() {
         when:
-        new ProtoNodeDecorator(null)
+        ProtoNodeDecorator.createFrom(null)
 
         then:
         thrown(IllegalArgumentException)
     }
 
 
-    def "Can get primary type"() {
-        when:
-        final protoNodeDecorator = new ProtoNodeDecorator(decoratedProtoNode)
+    def "Can create a regular DefaultProtoNodeDecorator"() {
+        given:
+        ProtoNodeBuilder nodeBuilder = ProtoNode.newBuilder()
+        nodeBuilder.setName("user")
+        NodeProtos.Property primaryTypeProperty = NodeProtos.Property
+                .newBuilder()
+                .setName(JCR_PRIMARYTYPE)
+                .setType(STRING)
+                .setMultiple(false)
+                .addValues(NodeProtos.Value.newBuilder().setStringValue('nt:unstructured'))
+                .build()
+        nodeBuilder.addProperties(primaryTypeProperty)
+        final protoNodeDecorator = ProtoNodeDecorator.createFrom(nodeBuilder.build())
 
-        then:
-        protoNodeDecorator.getPrimaryType() == JcrConstants.NT_UNSTRUCTURED
+        expect:
+        protoNodeDecorator instanceof DefaultProtoNodeDecorator
     }
 
 
-    def "can get mixin property"() {
+    def "Can create an AuthorizableProtoNodeDecorator with wrapped User node"() {
         given:
-        final protoNodeDecorator = new ProtoNodeDecorator(decoratedProtoNode)
+        NodeProtos.Node.Builder nodeBuilder = NodeProtos.Node.newBuilder()
+        nodeBuilder.setName("user")
+        NodeProtos.Property userProperty = NodeProtos.Property
+                .newBuilder()
+                .setName(JCR_PRIMARYTYPE)
+                .setType(STRING)
+                .setMultiple(false)
+                .addValues(NodeProtos.Value.newBuilder().setStringValue('rep:User'))
+                .build()
+        nodeBuilder.addProperties(userProperty)
+        final protoNodeDecorator = ProtoNodeDecorator.createFrom(nodeBuilder.build())
 
-        when:
-        final property = protoNodeDecorator.getMixinProperty()
-
-        then:
-        property.valuesCount == 2
-        property.name == JCR_MIXINTYPES
+        expect:
+        protoNodeDecorator instanceof AuthorizableProtoNodeDecorator
     }
 
 
-    def "Can get just writable properties"() {
+    def "Can create an AuthorizableProtoNodeDecorator with wrapped Group node"() {
         given:
-        final protoNodeDecorator = new ProtoNodeDecorator(decoratedProtoNode)
+        NodeProtos.Node.Builder nodeBuilder = NodeProtos.Node.newBuilder()
+        nodeBuilder.setName("group")
+        NodeProtos.Property groupProperty = NodeProtos.Property
+                .newBuilder()
+                .setName(JCR_PRIMARYTYPE)
+                .setType(STRING)
+                .setMultiple(false)
+                .addValues(NodeProtos.Value.newBuilder().setStringValue('rep:Group'))
+                .build()
+        nodeBuilder.addProperties(groupProperty)
+        final protoNodeDecorator = ProtoNodeDecorator.createFrom(nodeBuilder.build())
 
-        when:
-        final properties = protoNodeDecorator.getWritableProperties()
-
-        then:
-        properties.size() == 1
-        properties[0].value.stringValue == "somevalue"
+        expect:
+        protoNodeDecorator instanceof AuthorizableProtoNodeDecorator
     }
 
 
-    def "Can write the decorated node to the JCR"() {
+    def "Can create an ACLProtoNodeDecorator with a wrapped rep:ACL node"() {
         given:
-        final session = Mock(Session)
-        final node = Mock(Node) {
-            canAddMixin("somemixintype") >> { true }
-            canAddMixin("unwritablemixin") >> { false }
-        }
+        NodeProtos.Node.Builder nodeBuilder = NodeProtos.Node.newBuilder()
+        nodeBuilder.setName("/content/test/rep:policy")
+        NodeProtos.Property primaryType = NodeProtos.Property
+                .newBuilder()
+                .setName(JCR_PRIMARYTYPE)
+                .setType(STRING)
+                .setMultiple(false)
+                .addValues(NodeProtos.Value.newBuilder().setStringValue(NT_REP_ACL))
+                .build()
+        nodeBuilder.addProperties(primaryType)
+        final protoNodeDecorator = ProtoNodeDecorator.createFrom(nodeBuilder.build())
 
-        final protoNodeDecorator = Spy(ProtoNodeDecorator, constructorArgs: [decoratedProtoNode]) {
-            getOrCreateNode(session) >> { node }
-        }
-
-        when:
-        protoNodeDecorator.writeToJcr(session)
-
-        then:
-        //Only one mixin should be valid
-        1 * node.addMixin("somemixintype")
-        //Only one other property that needs to be written
-        1 * node.setProperty(_, _, _)
+        expect:
+        protoNodeDecorator instanceof ACLProtoNodeDecorator
     }
 }

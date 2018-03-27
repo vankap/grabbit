@@ -15,17 +15,25 @@ dependencies {
     compile "com.google.code.findbugs:jsr305:${jsr305_version}"
 
     // Adobe AEM Libraries
-    compile "com.day.cq.workflow:cq-workflow-console:${cq_workflow_console_version}" 
+    compile "com.day.cq.workflow:cq-workflow-console:${cq_workflow_console_version}"
+
+    //HTTP client library
+    compile "org.apache.servicemix.bundles:org.apache.servicemix.bundles.okhttp:${okhttp_version}", {
+        exclude group: "com.squareup.okio", module: "okio"
+    }
+    compile "org.apache.servicemix.bundles:org.apache.servicemix.bundles.okio:${okio_version}"
+
 
     // Apache Sling libraries
     compile "org.apache.sling:org.apache.sling.api:${sling_api_version}"
+    compile "org.apache.sling:org.apache.sling.jcr.base:${sling_base_version}"
     compile "org.apache.sling:org.apache.sling.jcr.resource:${sling_jcr_resource_version}"
 
     // Apache Felix libraries
     compile "org.apache.felix:org.osgi.core:${felix_osgi_version}"
     compile "org.apache.felix:org.osgi.compendium:${felix_osgi_version}"
 
-    compile "joda-time:joda-time:1.6.2"
+    compile "joda-time:joda-time:2.7"
 
     // Need the "javax.jms" library for Spring JMS
     compile "org.glassfish:javax.jms:${jms_version}"
@@ -33,6 +41,8 @@ dependencies {
     // Working with the JCR
     compile "javax.jcr:jcr:${jcr_version}"
     compile "org.apache.jackrabbit:jackrabbit-jcr-commons:${jackrabbit_version}"
+    compile "org.apache.jackrabbit:jackrabbit-api:${jackrabbit_version}"
+    compile "org.apache.jackrabbit:oak-core:${oak_version}"
     compile "org.apache.sling:org.apache.sling.jcr.api:${sling_commons_version}"
 
     // Logging
@@ -73,21 +83,6 @@ dependencies {
     compile "org.apache.commons:commons-lang3:${commons_lang_version}"
     compile "commons-io:commons-io:${commons_io_version}"
 
-    // HTTP components libraries
-    compile "org.apache.httpcomponents:httpclient-osgi:${httpcomponents_client_version}", {
-        exclude module: "httpclient"
-        exclude module: "httpcore"
-        exclude module: "httpclient-cache"
-        exclude module: "httpmime"
-        exclude module: "fluent-hc"
-    }
-    compile "org.apache.httpcomponents:httpcore-osgi:${httpcomponents_core_version}", {
-        exclude module: "httpclient-cache"
-        exclude module: "httpcore"
-        exclude module: "httpcore-nio"
-        exclude module: "httpmime"
-        exclude module: "fluent-hc"
-    }
 
     compile "org.yaml:snakeyaml:${snakeyaml_version}"
 

@@ -2,13 +2,37 @@
 
 [ ![Download](https://api.bintray.com/packages/twcable/aem/Grabbit/images/download.svg) ](https://bintray.com/twcable/aem/Grabbit/_latestVersion)
 
-## 6.0.0
+## 7.1.3
 
-* Upgrade to protoc 2.6.1 and clean up of messaging structure
-* Feature 112. Added ability to specify batch size at job and transaction level
-* Project build restructure
-* README restructure and updates
+* Bug fixes (Fixes #192)
 
+## 7.1.2
+
+* Bug fixes
+
+## 7.1.1
+* Bug fixes
+* Documentation changes
+* Log names are now changed from batch-client.log to grabbit-receive.log; and batch-server.log to grabbit-send.log
+
+## 7.1.0
+* Support for writing rep:policy nodes
+* Bug fixes
+* Performance improvements
+
+## 7.0.2
+* Bug fixes
+
+## 7.0.1
+* Add https sync support (fix #149)
+
+## 7.0.0
+
+* Refactor JcrNodesProcessor to use JcrPropertyDecorator
+* Provide Root ResourceProvider for Grabbit
+* Upgrade joda-time dependency to 2.7 and update MANIFEST.MF to accept [2,3) for AEM 6.1 & AEM 6.2 compatibility
+* Added Content-Type header in curl request in grabbit.sh for it to work in AEM 6.2
+* Transfer current property's state whether it's multiple or not from Server to Client
 
 ## 5.0.1
 

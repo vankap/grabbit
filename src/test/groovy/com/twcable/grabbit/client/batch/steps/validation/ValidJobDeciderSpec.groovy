@@ -1,19 +1,3 @@
-package com.twcable.grabbit.client.batch.steps.validation
-
-import com.twcable.grabbit.client.batch.ClientBatchJob
-import com.twcable.grabbit.client.batch.ClientBatchJobContext
-import org.springframework.batch.core.JobExecution
-import org.springframework.batch.core.JobParameters
-import org.springframework.batch.core.StepExecution
-import spock.lang.Specification
-import spock.lang.Subject
-import spock.lang.Unroll
-
-import javax.jcr.Node
-import javax.jcr.PathNotFoundException
-import javax.jcr.RepositoryException
-import javax.jcr.Session
-
 /*
  * Copyright 2015 Time Warner Cable, Inc.
  *
@@ -29,6 +13,21 @@ import javax.jcr.Session
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.twcable.grabbit.client.batch.steps.validation
+
+import com.twcable.grabbit.client.batch.ClientBatchJob
+import com.twcable.grabbit.client.batch.ClientBatchJobContext
+import org.springframework.batch.core.JobExecution
+import org.springframework.batch.core.JobParameters
+import org.springframework.batch.core.StepExecution
+import spock.lang.Specification
+import spock.lang.Subject
+import spock.lang.Unroll
+
+import javax.jcr.Node
+import javax.jcr.PathNotFoundException
+import javax.jcr.RepositoryException
+import javax.jcr.Session
 
 @Subject(ValidJobDecider)
 class ValidJobDeciderSpec extends Specification {
@@ -80,17 +79,19 @@ class ValidJobDeciderSpec extends Specification {
         jobDecider.decide(jobExecution, stepExecution) == ValidJobDecider.JOB_INVALID
     }
 
-    def "Will pass validation if paths with an existent parent are submitted"(){
+    @Unroll
+    def "Will pass validation if paths with an existent parent are submitted, path: #path for parent path #parentPath"(){
         when:
         final JobExecution jobExecution = Mock(JobExecution) {
             getJobParameters() >> {
                 return Mock(JobParameters) {
-                    getString(ClientBatchJob.PATH) >> "/foo/bar"
+                    getString(ClientBatchJob.PATH) >> path
                 }
             }
         }
         final Session session = Mock(Session) {
-            getNode("/foo") >> { return Mock(Node) }
+            getNode(parentPath) >> { return Mock(Node) }
+            getNode(_) >> { throw new PathNotFoundException()}
         }
 
         ClientBatchJobContext.setSession(session)
@@ -100,6 +101,12 @@ class ValidJobDeciderSpec extends Specification {
 
         then:
         jobDecider.decide(jobExecution, stepExecution) == ValidJobDecider.JOB_VALID
+
+        where:
+        parentPath | path
+        '/foo'     | '/foo/bar'
+        '/foo'     | '/foo/fo'
+        '/foo'     | '/foo/fo/'
     }
 
     def "Recovers gracefully if an issue is encountered with the repository"() {

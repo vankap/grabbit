@@ -1,3 +1,18 @@
+/*
+ * Copyright 2015 Time Warner Cable, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.twcable.grabbit.client.servlets
 
 import com.twcable.grabbit.client.batch.ClientBatchJob
@@ -15,22 +30,6 @@ import spock.lang.Specification
 
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST
 import static javax.servlet.http.HttpServletResponse.SC_OK
-
-/*
- * Copyright 2015 Time Warner Cable, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 class GrabbitTransactionServletSpec extends Specification {
 
@@ -50,6 +49,31 @@ class GrabbitTransactionServletSpec extends Specification {
         }
 
         final transactionServlet = new GrabbitTransactionServlet()
+
+        expect:
+        transactionServlet.doGet(request, response)
+    }
+
+    def "A request for transaction status with an transactionId 'all' results in a OK response"() {
+        given:
+        final request = Mock(SlingHttpServletRequest) {
+            getResource() >> Mock(Resource) {
+                getResourceMetadata() >> Mock(ResourceMetadata) {
+                    get(TransactionResource.TRANSACTION_ID_KEY) >> "all"
+                }
+            }
+            getPathInfo() >> "/grabbit/transaction/all"
+        }
+        final response = Mock(SlingHttpServletResponse) {
+            1 * setStatus(SC_OK)
+            getWriter() >> Mock(PrintWriter)
+        }
+        final applicationContext = Mock(ConfigurableApplicationContext) {
+            getBean("clientJobExplorer", JobExplorer) >> Mock(JobExplorer)
+        }
+
+        final transactionServlet = new GrabbitTransactionServlet()
+        transactionServlet.setConfigurableApplicationContext(applicationContext)
 
         expect:
         transactionServlet.doGet(request, response)

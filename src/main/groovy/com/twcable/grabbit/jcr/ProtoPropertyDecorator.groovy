@@ -1,5 +1,3 @@
-package com.twcable.grabbit.jcr
-
 /*
  * Copyright 2015 Time Warner Cable, Inc.
  *
@@ -15,22 +13,30 @@ package com.twcable.grabbit.jcr
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.twcable.grabbit.jcr
 
 import com.twcable.grabbit.DateUtil
 import com.twcable.grabbit.proto.NodeProtos.Property as ProtoProperty
 import com.twcable.grabbit.proto.NodeProtos.Value as ProtoValue
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
-import org.apache.jackrabbit.value.ValueFactoryImpl
-
 import javax.annotation.Nonnull
 import javax.jcr.Node as JCRNode
 import javax.jcr.PropertyType
 import javax.jcr.Value
 import javax.jcr.ValueFormatException
+import org.apache.jackrabbit.value.ValueFactoryImpl
+
 
 import static org.apache.jackrabbit.JcrConstants.JCR_MIXINTYPES
 import static org.apache.jackrabbit.JcrConstants.JCR_PRIMARYTYPE
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.AC_NODETYPE_NAMES
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.NT_REP_ACL
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.NT_REP_DENY_ACE
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.NT_REP_GRANT_ACE
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.NT_REP_RESTRICTIONS
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.REP_PRINCIPAL_NAME
+import static org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants.REP_PRIVILEGES
 
 @CompileStatic
 @Slf4j
@@ -38,6 +44,7 @@ class ProtoPropertyDecorator {
 
     @Delegate
     ProtoProperty innerProtoProperty
+
 
     ProtoPropertyDecorator(@Nonnull ProtoProperty protoProperty) {
         this.innerProtoProperty = protoProperty
@@ -84,26 +91,72 @@ class ProtoPropertyDecorator {
     }
 
 
-    boolean isMultiple() {
-        /**
-         * According to the JCR spec, all properties must have a value; however, a multi-value property can have an "empty" value (like an empty array)
-         * That is how we know it is a multiple valued property if the values count is 0
-         */
-        return valuesCount > 1 || valuesCount == 0
+    boolean isPrincipalName() {
+        innerProtoProperty.name == REP_PRINCIPAL_NAME
     }
 
 
-    ProtoValue getValue() {
+    boolean isPrivilege() {
+        innerProtoProperty.name == REP_PRIVILEGES
+    }
+
+
+    boolean isUserType() {
+        isPrimaryType() && (getStringValue() == 'rep:User')
+    }
+
+
+    boolean isGroupType() {
+        isPrimaryType() && (getStringValue() == 'rep:Group')
+    }
+
+
+    boolean isACType() {
+        isPrimaryType() && (AC_NODETYPE_NAMES.contains(getStringValue()))
+    }
+
+
+    boolean isRepAclType() {
+        isPrimaryType() && (getStringValue() ==  NT_REP_ACL)
+    }
+
+
+    boolean isGrantACEType() {
+        isPrimaryType() && (getStringValue() == NT_REP_GRANT_ACE)
+    }
+
+
+    boolean isDenyACEType() {
+        isPrimaryType() && (getStringValue() == NT_REP_DENY_ACE)
+    }
+
+
+    boolean isRepRestrictionType() {
+        isPrimaryType() && (getStringValue() == NT_REP_RESTRICTIONS)
+    }
+
+
+    boolean isAuthorizableIDType() {
+        innerProtoProperty.name == 'rep:authorizableId'
+    }
+
+
+    String getStringValue() {
+        getValue().stringValue
+    }
+
+
+    private ProtoValue getValue() {
         innerProtoProperty.valuesList.first()
     }
 
 
-    private Value getPropertyValue() throws ValueFormatException {
+    Value getPropertyValue() throws ValueFormatException {
         getJCRValueFromProtoValue(getValue())
     }
 
 
-    private Value[] getPropertyValues() throws ValueFormatException {
+    Value[] getPropertyValues() throws ValueFormatException {
         return innerProtoProperty.valuesList.collect { ProtoValue protoValue -> getJCRValueFromProtoValue(protoValue) } as Value[]
     }
 

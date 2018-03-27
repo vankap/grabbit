@@ -3,7 +3,6 @@ apply plugin: 'cqpackage'
 configurations.cq_package {
     exclude group: 'javax.servlet', module: 'servlet-api'
     exclude group: 'commons-logging', module: 'commons-logging'
-    exclude group: 'commons-httpclient', module: 'commons-httpclient'
     exclude group: 'com.sun.xml.bind'
     exclude group: 'aopalliance', module: 'aopalliance'
     exclude group: 'javax.xml.stream'
@@ -29,17 +28,18 @@ configurations.cq_package {
     exclude group: 'org.apache.felix', module: 'org.osgi.compendium'
 
     exclude group: 'org.apache.commons', module: 'commons-lang3'
-    exclude group: 'org.apache.jackrabbit', module:'jackrabbit-jcr-commons'
+    exclude group: 'org.apache.jackrabbit', module: 'jackrabbit-jcr-commons'
+    exclude group: 'org.apache.jackrabbit', module: 'jackrabbit-api'
+    exclude group: 'org.apache.jackrabbit', module: 'oak-core'
     exclude group: 'commons-io', module: 'commons-io'
 
     //Exclude Apache Sling Libraries
     exclude group: 'org.apache.sling', module: 'org.apache.sling.api'
+    exclude group: 'org.apache.sling', module: 'org.apache.sling.jcr.base'
     exclude group: 'org.apache.sling', module:'org.apache.sling.jcr.resource'
     exclude group: 'org.apache.sling', module: 'org.apache.sling.jcr.api'
 
     // 6.x exclude bundles
     exclude group: 'com.google.guava', module: 'guava'
-    exclude group: 'org.apache.httpcomponents', module: 'httpclient-osgi'
-    exclude group: 'org.apache.httpcomponents', module: 'httpcore-osgi'
     exclude module: 'cq-workflow-console'
 }
